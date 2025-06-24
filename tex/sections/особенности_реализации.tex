@@ -1,0 +1,310 @@
+\section{Особенности реализации}
+\subsection{Структура и интерфейс игрока}
+
+Игрок реализован в виде отдельного класса, удовлетворяющего требованиям системы тестирования. В частности, интерфейс игрока включает методы для передачи имени, установки символа и выбора хода. Ниже приведён заголовочный файл класса игрока с ключевыми методами:
+
+\begin{lstlisting}[language=C++,numbers=left,caption={Заголовочный файл класса игрока},label={lst:myplayer_hpp}]
+class MyPlayer : public IPlayer {
+public:
+    // Конструктор: принимает имя игрока
+    MyPlayer(const char *name);
+
+    // Деструктор
+    ~MyPlayer();
+
+    // Получение имени игрока
+    const char *get_name() const;
+
+    // Установка игрового символа (X или O)
+    void set_sign(Sign sign);
+
+    // Выбор хода на текущем состоянии поля
+    Point make_move(const State &state);
+
+private:
+    char m_name[32]; // Имя игрока
+    Sign m_sign;     // Текущий символ (X или O)
+    // ...вспомогательные методы и структуры
+};
+\end{lstlisting}
+
+\noindent Класс содержит закрытые поля для хранения имени и символа игрока, а также ряд вспомогательных методов, необходимых для работы алгоритма.
+
+\bigskip
+
+Ниже приведены примеры реализации ключевых методов этого интерфейса:
+
+\begin{lstlisting}[language=C++,numbers=left,caption={Реализация основных методов класса MyPlayer},label={lst:myplayer_cpp}]
+MyPlayer::MyPlayer(const char *name) : m_sign(Sign::X) {
+    std::strncpy(m_name, name ? name : "MyPlayer", sizeof(m_name) - 1);
+    m_name[sizeof(m_name) - 1] = '\0';
+}
+
+const char *MyPlayer::get_name() const {
+    return m_name;
+}
+
+void MyPlayer::set_sign(Sign sign) {
+    m_sign = sign;
+}
+
+Point MyPlayer::make_move(const State &state) {
+    // Основная логика выбора хода
+}
+\end{lstlisting}
+
+\noindent Все остальные внутренние детали (например, методы для генерации перспективных ходов, эвристической оценки или реализации поиска Minimax) скрыты внутри класса и не зависят от системы тестирования.
+
+\subsection{Внутренние методы класса игрока}
+
+В дополнение к основным публичным методам класс игрока содержит ряд внутренних (закрытых) методов и структур, реализующих ключевую вспомогательную логику. В частности, во всех этапах перебора ходов и оценки позиции используются \textbf{перспективные ходы} — только те клетки, которые потенциально могут повлиять на дальнейший ход игры.
+
+
+\begin{itemize}
+    \item \textbf{Структура MoveArray} — внутренний динамический массив для хранения списка перспективных ходов.
+
+    \item \textbf{bool is\_within\_bounds(int x, int y, const State\& state) const} — проверка, что координаты $(x, y)$ находятся в пределах игрового поля.
+
+    \item \textbf{bool has\_neighbor(const State\& state, int x, int y) const} — проверка наличия занятых клеток в окрестности радиуса 2 (используется для генерации только «перспективных» ходов).
+
+    \item \textbf{void generate\_moves(const State\& state, MoveArray \&moves) const} — заполнение массива \verb|moves| только перспективными (соседними к занятым) ходами; если поле пустое, первым ходом выбирается центр (см. листинг~).
+
+    \item \textbf{int evaluate(const State\& state, Sign maximizer) const} — вычисление эвристической оценки позиции.
+
+    \item \textbf{int minimax(State \&state, int depth, int alpha, int beta, bool maximizing, Sign player, Point \&best\_move, long long deadline) const} — реализация Minimax с альфа-бета отсечением и ограничением по времени.
+\end{itemize}
+
+\vspace{0.5em}
+
+\noindent Все эти методы инкапсулированы в классе и не видны извне, что обеспечивает чистоту интерфейса и корректность взаимодействия с системой тестирования.
+
+\vspace{0.5em}
+
+\noindent Реализация методов \verb|is_within_bounds| и \verb|has_neighbor|:
+
+\begin{lstlisting}[language=C++,numbers=left,caption={Вспомогательные методы класса игрока},label={lst:helper_methods}]
+bool MyPlayer::is_within_bounds(int x, int y, const State &state) const {
+    return x >= 0 && x < state.get_opts().cols && y >= 0 &&
+           y < state.get_opts().rows;
+}
+
+bool MyPlayer::has_neighbor(const State &state, int x, int y) const {
+    for (int dx = -2; dx <= 2; ++dx)
+        for (int dy = -2; dy <= 2; ++dy)
+            if ((dx || dy) && is_within_bounds(x + dx, y + dy, state))
+                if (state.get_value(x + dx, y + dy) != Sign::NONE)
+                    return true;
+    return false;
+}
+\end{lstlisting}
+
+\subsection{Генерация перспективных ходов}
+
+Для сокращения пространства поиска при выборе хода реализован механизм генерации \textbf{перспективных ходов}. Это позволяет значительно ускорить работу алгоритма Minimax даже на большом поле.
+
+\vspace{1ex}
+
+Динамический массив перспективных ходов хранится во внутренней структуре класса игрока:
+
+\begin{lstlisting}[language=C++,caption={Фрагмент класса MyPlayer: структура MoveArray},label={lst:move_array},numbers=left]
+struct MoveArray {
+    Point* data;
+    int capacity;
+    int size;
+    MoveArray(int max_size);
+    ~MoveArray();
+    void clear();
+    void push_back(const Point& p);
+};
+\end{lstlisting}
+
+\vspace{1ex}
+
+Генерация перспективных ходов осуществляется методом \texttt{generate\_moves}. Этот метод выполняет следующие действия:
+
+\begin{itemize}
+    \item если поле пустое, перспективным считается только центральная клетка;
+    \item в противном случае для каждой пустой клетки проверяется наличие хотя бы одной занятой клетки в её окрестности радиусом $2$;
+    \item если такая клетка найдена, она добавляется в массив перспективных ходов.
+\end{itemize}
+
+\vspace{1ex}
+
+Ниже приведён соответствующий фрагмент исходного кода (реализация метода):
+
+\begin{lstlisting}[language=C++,caption={Генерация перспективных ходов},label={lst:generate_moves},numbers=left]
+void MyPlayer::generate_moves(const State &state, MoveArray &moves) const {
+    moves.clear();
+    bool empty = true;
+    int rows = state.get_opts().rows, cols = state.get_opts().cols;
+    for (int y = 0; y < rows; ++y)
+        for (int x = 0; x < cols; ++x)
+            if (state.get_value(x, y) != Sign::NONE)
+                empty = false;
+    if (empty) {
+        // Первый ход - в центр поля
+        moves.push_back({cols / 2, rows / 2});
+        return;
+    }
+    for (int y = 0; y < rows; ++y)
+        for (int x = 0; x < cols; ++x)
+            if (state.get_value(x, y) == Sign::NONE && has_neighbor(state, x, y))
+                moves.push_back({x, y});
+}
+\end{lstlisting}
+
+\vspace{1ex}
+
+\noindent Проверка соседства реализована отдельным методом \texttt{has\_neighbor}, который возвращает \texttt{true}, если в радиусе $2$ клеток найдена хотя бы одна занятая:
+
+\begin{lstlisting}[language=C++,caption={Проверка наличия соседа у клетки},label={lst:has_neighbor},numbers=left]
+bool MyPlayer::has_neighbor(const State &state, int x, int y) const {
+    for (int dx = -2; dx <= 2; ++dx)
+        for (int dy = -2; dy <= 2; ++dy)
+            if ((dx || dy) && is_within_bounds(x + dx, y + dy, state))
+                if (state.get_value(x + dx, y + dy) != Sign::NONE)
+                    return true;
+    return false;
+}
+\end{lstlisting}
+
+\vspace{1ex}
+
+\noindent Такая реализация позволяет избежать перебора всех клеток на поле при оценке ходов, существенно ускоряя выполнение Minimax на больших досках. В массив перспективных ходов всегда попадают только действительно актуальные для текущей позиции клетки.
+
+\subsection{Оценка позиции (эвристика)}
+
+Для выбора оптимального хода требуется эффективно оценивать каждое промежуточное состояние игрового поля. В работе реализована простая, но эффективная эвристика, позволяющая различать выигрышные, проигрышные и промежуточные позиции, а также учитывать потенциальные угрозы от соперника.
+
+\vspace{1ex}
+
+Эвристическая функция реализована методом \texttt{evaluate}. Если на поле уже есть победная линия, функция сразу возвращает максимальную или минимальную оценку (в зависимости от того, кто выиграл). В остальных случаях осуществляется подсчёт длины линий одного знака по всем четырём направлениям (горизонталь, вертикаль, две диагонали).
+
+\vspace{1ex}
+
+Ниже приведён ключевой фрагмент кода (метод оценки позиции):
+
+\begin{lstlisting}[language=C++,caption={Эвристическая функция оценки позиции},label={lst:evaluate},numbers=left]
+int MyPlayer::evaluate(const State &state, Sign maximizer) const {
+    constexpr int INF = 10000000;
+    const int win_len = state.get_opts().win_len;
+    int score = 0;
+    int rows = state.get_opts().rows, cols = state.get_opts().cols;
+    const int dirs[4][2] = {{1, 0}, {0, 1}, {1, 1}, {1, -1}};
+    for (int y = 0; y < rows; ++y) {
+        for (int x = 0; x < cols; ++x) {
+            Sign s = state.get_value(x, y);
+            if (s == Sign::NONE)
+                continue;
+            for (int d = 0; d < 4; ++d) {
+                int len = 1;
+                for (int i = 1; i < win_len; ++i) {
+                    int nx = x + dirs[d][0] * i, ny = y + dirs[d][1] * i;
+                    if (!is_within_bounds(nx, ny, state) || \
+                    state.get_value(nx, ny) != s)
+                        break;
+                    ++len;
+                }
+                if (len >= win_len)
+                    return (s == maximizer) ? INF : -INF;
+                int value = (len == 4) ? 1000 : (len == 3) ? 100 : \
+                 (len == 2) ? 10 : 1;
+                if (s == maximizer)
+                    score += value;
+                else
+                    score -= 2 * value;
+            }
+        }
+    }
+    return score;
+}
+\end{lstlisting}
+
+\vspace{1ex}
+
+\noindent Принцип работы функции.
+\begin{itemize}
+    \item Если на доске обнаружена линия нужной длины ($\geq$ \verb|win_len|), возвращается максимальное (или минимальное) значение \verb|INF|/$-\mathrm{INF}$.
+    \item Для всех клеток и направлений подсчитываются подряд идущие символы, после чего вычисляется взвешенный вклад в итоговый счёт (\verb|value|).
+    \item Чем длиннее линия, тем больший вес она даёт (например, четыре подряд — $1000$, три — $100$, две — $10$).
+    \item Вклад линий соперника штрафуется вдвойне (\verb|score -= 2 * value|), чтобы сильнее учитывать потенциальные угрозы и не пропускать опасные позиции.
+\end{itemize}
+
+\vspace{1ex}
+
+\noindent Такая эвристика позволяет боту эффективно отличать выигрышные, проигрышные и просто хорошие или опасные позиции, при этом работает очень быстро.
+
+\subsection{Реализация Minimax с альфа-бета отсечением}
+
+Для выбора оптимального хода в каждой позиции используется алгоритм Minimax, дополненный альфа-бета отсечением для ускорения перебора. Глубина поиска ограничена, чтобы не превышать лимит времени на ход. Такой подход позволяет тщательно проанализировать ближайшие угрозы и возможности, не теряя производительности даже на большом поле.
+
+\vspace{1ex}
+
+Ниже приведён ключевой фрагмент реализации Minimax с альфа-бета отсечением:
+
+\begin{lstlisting}[language=C++,caption={Рекурсивная функция Minimax с альфа-бета отсечением},label={lst:minimax},numbers=left]
+int MyPlayer::minimax(State &state, int depth, int alpha, int beta,
+                      bool maximizing, Sign player, Point &best_move,
+                      long long deadline) const
+{
+    constexpr int INF = 10000000;
+    if ((std::clock() * 1000 / CLOCKS_PER_SEC) > deadline)
+        return evaluate(state, m_sign);
+    if (depth == 0)
+        return evaluate(state, m_sign);
+
+    int rows = state.get_opts().rows, cols = state.get_opts().cols;
+    MoveArray moves(rows * cols);
+    generate_moves(state, moves);
+    if (moves.size == 0)
+        return evaluate(state, m_sign);
+
+    int best_score = maximizing ? -INF : INF;
+    for (int idx = 0; idx < moves.size; ++idx) {
+        Point move = moves.data[idx];
+        if (state.get_value(move.x, move.y) != Sign::NONE)
+            continue;
+        State next_state = state;
+        next_state.process_move(player, move.x, move.y);
+
+        Point dummy;
+        int score =
+            minimax(next_state, depth - 1, alpha, beta, !maximizing,
+                    (player == Sign::X) ? Sign::O : Sign::X, dummy, deadline);
+
+        if (maximizing) {
+            if (score > best_score) {
+                best_score = score;
+                best_move = move;
+            }
+            if (score > alpha)
+                alpha = score;
+        } else {
+            if (score < best_score) {
+                best_score = score;
+                best_move = move;
+            }
+            if (score < beta)
+                beta = score;
+        }
+        if (beta <= alpha)
+            break;
+    }
+    return best_score;
+}
+\end{lstlisting}
+
+\vspace{1ex}
+
+\noindent Основные особенности реализации.
+\begin{itemize}
+    \item При достижении максимальной глубины (\texttt{depth == 0}) или истечении лимита времени вызывается эвристика для текущей позиции.
+    \item Перебираются только перспективные ходы (формируются с помощью вспомогательного метода, см. предыдущие пункты).
+    \item На каждом уровне рекурсии бот либо максимизирует, либо минимизирует оценку, в зависимости от того, чей сейчас ход.
+    \item Значения \texttt{alpha} и \texttt{beta} обновляются при каждом удачном ходе. Если текущая ветка уже гарантированно хуже ранее найденных, остальные ходы на этом уровне не рассматриваются (альфа-бета отсечение).
+    \item При поиске сохраняется лучший найденный ход, который затем выбирается как итоговый.
+\end{itemize}
+
+\subsubsection*{Ограничение времени и корректность}
+
+В ходе работы алгоритма в каждом рекурсивном вызове \lstinline|minimax| проверяется, не превышен ли заданный лимит времени на ход (используется функция \lstinline|std::clock|). Если лимит времени превышен, возвращается текущая оценка позиции с помощью эвристики, что позволяет гарантировать завершение работы бота в установленные сроки (см. листинг~, строки~3--5).

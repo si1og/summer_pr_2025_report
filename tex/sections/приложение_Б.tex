@@ -1,0 +1,168 @@
+\section*{Приложение Б. Реализация класса MyPlayer}
+\addcontentsline{toc}{section}{Приложение Б. Реализация класса MyPlayer}
+
+\begin{lstlisting}[language=C++,caption={Реализация класса MyPlayer},label={lst:move_array},numbers=left]
+#include "my_player.hpp"
+#include <algorithm>
+#include <cstring>
+#include <ctime>
+
+namespace ttt::my_player {
+
+MyPlayer::MyPlayer(const char *name) : m_sign(Sign::X) {
+  std::strncpy(m_name, name ? name : "MyPlayer", sizeof(m_name) - 1);
+  m_name[sizeof(m_name) - 1] = '\0';
+}
+
+MyPlayer::~MyPlayer() {}
+
+void MyPlayer::set_sign(Sign sign) { m_sign = sign; }
+const char *MyPlayer::get_name() const { return m_name; }
+
+MyPlayer::MoveArray::MoveArray(int max_size) : capacity(max_size), size(0) {
+  data = new Point[capacity];
+}
+MyPlayer::MoveArray::~MoveArray() { delete[] data; }
+void MyPlayer::MoveArray::clear() { size = 0; }
+void MyPlayer::MoveArray::push_back(const Point &p) {
+  if (size < capacity)
+    data[size++] = p;
+}
+
+bool MyPlayer::is_within_bounds(int x, int y, const State &state) const {
+  return x >= 0 && x < state.get_opts().cols && y >= 0 &&
+         y < state.get_opts().rows;
+}
+
+bool MyPlayer::has_neighbor(const State &state, int x, int y) const {
+  for (int dx = -2; dx <= 2; ++dx)
+    for (int dy = -2; dy <= 2; ++dy)
+      if ((dx || dy) && is_within_bounds(x + dx, y + dy, state))
+        if (state.get_value(x + dx, y + dy) != Sign::NONE)
+          return true;
+  return false;
+}
+
+void MyPlayer::generate_moves(const State &state, MoveArray &moves) const {
+  moves.clear();
+  bool empty = true;
+  int rows = state.get_opts().rows, cols = state.get_opts().cols;
+  for (int y = 0; y < rows; ++y)
+    for (int x = 0; x < cols; ++x)
+      if (state.get_value(x, y) != Sign::NONE)
+        empty = false;
+  if (empty) {
+    // Первый ход - в центр поля
+    moves.push_back({cols / 2, rows / 2});
+    return;
+  }
+  for (int y = 0; y < rows; ++y)
+    for (int x = 0; x < cols; ++x)
+      if (state.get_value(x, y) == Sign::NONE && has_neighbor(state, x, y))
+        moves.push_back({x, y});
+}
+
+int MyPlayer::evaluate(const State &state, Sign maximizer) const {
+  constexpr int INF = 10000000;
+  const int win_len = state.get_opts().win_len;
+  int score = 0;
+  int rows = state.get_opts().rows, cols = state.get_opts().cols;
+  const int dirs[4][2] = {{1, 0}, {0, 1}, {1, 1}, {1, -1}};
+  for (int y = 0; y < rows; ++y) {
+    for (int x = 0; x < cols; ++x) {
+      Sign s = state.get_value(x, y);
+      if (s == Sign::NONE)
+        continue;
+      for (int d = 0; d < 4; ++d) {
+        int len = 1;
+        for (int i = 1; i < win_len; ++i) {
+          int nx = x + dirs[d][0] * i, ny = y + dirs[d][1] * i;
+          if (!is_within_bounds(nx, ny, state) || state.get_value(nx, ny) != s)
+            break;
+          ++len;
+        }
+        if (len >= win_len)
+          return (s == maximizer) ? INF : -INF;
+        int value = (len == 4) ? 1000 : (len == 3) ? 100 : (len == 2) ? 10 : 1;
+        if (s == maximizer)
+          score += value;
+        else
+          score -= 2 * value;
+      }
+    }
+  }
+  return score;
+}
+
+int MyPlayer::minimax(State &state, int depth, int alpha, int beta,
+                      bool maximizing, Sign player, Point &best_move,
+                      long long deadline) const {
+  constexpr int INF = 10000000;
+  if ((std::clock() * 1000 / CLOCKS_PER_SEC) > deadline)
+    return evaluate(state, m_sign);
+  if (depth == 0)
+    return evaluate(state, m_sign);
+
+  int rows = state.get_opts().rows, cols = state.get_opts().cols;
+  MoveArray moves(rows * cols);
+  generate_moves(state, moves);
+  if (moves.size == 0)
+    return evaluate(state, m_sign);
+
+  int best_score = maximizing ? -INF : INF;
+  for (int idx = 0; idx < moves.size; ++idx) {
+    Point move = moves.data[idx];
+    if (state.get_value(move.x, move.y) != Sign::NONE)
+      continue;
+    State next_state = state;
+    next_state.process_move(player, move.x, move.y);
+
+    Point dummy;
+    int score =
+        minimax(next_state, depth - 1, alpha, beta, !maximizing,
+                (player == Sign::X) ? Sign::O : Sign::X, dummy, deadline);
+
+    if (maximizing) {
+      if (score > best_score) {
+        best_score = score;
+        best_move = move;
+      }
+      if (score > alpha)
+        alpha = score;
+    } else {
+      if (score < best_score) {
+        best_score = score;
+        best_move = move;
+      }
+      if (score < beta)
+        beta = score;
+    }
+    if (beta <= alpha)
+      break;
+  }
+  return best_score;
+}
+
+Point MyPlayer::make_move(const State &state) {
+  Point move = {state.get_opts().cols / 2, state.get_opts().rows / 2};
+  if (state.get_move_no() == 0)
+    return move;
+
+  long long start = std::clock() * 1000 / CLOCKS_PER_SEC;
+  long long deadline = start + 90; // лимит на принятие решения (мс)
+  State state_copy = state;
+  minimax(state_copy, 3, -10000000, 10000000, true, m_sign, move, deadline);
+
+  if (!is_within_bounds(move.x, move.y, state) ||
+      state.get_value(move.x, move.y) != Sign::NONE) {
+    for (int y = 0; y < state.get_opts().rows; ++y)
+      for (int x = 0; x < state.get_opts().cols; ++x)
+        if (state.get_value(x, y) == Sign::NONE)
+          return {x, y};
+    return {0, 0};
+  }
+  return move;
+}
+
+} // namespace ttt::my_player
+\end{lstlisting}

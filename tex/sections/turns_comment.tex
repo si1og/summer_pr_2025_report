@@ -1,0 +1,78 @@
+\vspace{1em}
+
+\noindent
+Алгоритм Minimax, применяя анализ только перспективных ходов, обеспечивает эффективный перебор вариантов и выбор оптимального хода для игрока X. Стратегия заключается в построении дерева возможных продолжений партии, где на каждом уровне оцениваются наиболее выгодные направления развития. Практика показывает, что такой подход позволяет быстро выявлять выигрышные или защитные ходы, минимизируя избыточные вычисления.
+
+
+% \begin{center}
+% \begin{tikzpicture}[
+%   level distance=2.7cm,
+%   sibling distance=4.1cm,
+%   every node/.style={
+%     font=\small,
+%     align=center,
+%     minimum width=1.8cm,
+%     minimum height=1.1cm
+%   },
+%   solidnode/.style={
+%     draw,
+%     thick,
+%     rectangle
+%   },
+%   dashednode/.style={
+%     draw,
+%     thick,
+%     rectangle,
+%     dashed
+%   },
+%   leafnode/.style={
+%     draw,
+%     thin,
+%     rectangle,
+%     font=\footnotesize,
+%     minimum width=2.3cm,
+%     minimum height=0.7cm
+%   },
+%   edge from parent/.style={
+%     draw,
+%     thick,
+%     -latex
+%   }
+%   ]
+
+% % Корень - позиция после хода 6
+% \node[solidnode] (root) {Позиция \\ после хода 6}
+%   child {node[solidnode,xshift=-3cm] (move1) {Ход X: (7,3)}
+%     child {node[dashednode,xshift=1.5cm] (resp11) {O: (7,7)}
+%       child {node[leafnode] {f=0}}
+%     }
+%     child {node[dashednode] (resp12) {O: (7,5)}
+%       child {node[leafnode] {f=0}}
+%     }
+%     child {node[dashednode,xshift=-1.5cm] (resp13) {O: (8,3)}
+%       child {node[leafnode] {f=-50}}
+%     }
+%   }
+%   child {node[solidnode,xshift=1cm] (move2) {Ход X: (7,8)}
+%     child {node[dashednode,xshift=1.5cm] (resp21) {O: (7,5)}
+%       child {node[leafnode] {f=+80}}
+%     }
+%     child {node[dashednode] (resp22) {O: (8,8)}
+%       child {node[leafnode] {f=-10}}
+%     }
+%     child {node[dashednode,xshift=-1.5cm] (resp23) {O: (6,8)}
+%       child {node[leafnode] {f=-30}}
+%     }
+%   }
+%   child {node[solidnode] (move3) {...}};
+
+% % подписываем минимумы для каждой ветви
+% \node[font=\footnotesize] at ($(move3.south) + (0,-0.5)$) {...};
+
+
+% \node[font=\small\bfseries,red,below=1cm,xshift=-2cm] {Выбран ход (7,4) --- лучший результат минимакса};
+
+% \end{tikzpicture}
+
+
+% \end{center}
