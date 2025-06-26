@@ -15,5 +15,5 @@ def rename_files(root_dir='.'):
     if not is_renamed: print('Renamed nothing.')
 
 if __name__ == '__main__':
-    rename_files('img')
-    # rename_files()
+    # rename_files('img')
+    rename_files()
