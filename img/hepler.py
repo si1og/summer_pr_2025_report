@@ -16,3 +16,4 @@ def rename_files(root_dir='.'):
 
 if __name__ == '__main__':
     rename_files('img')
+    # rename_files()
