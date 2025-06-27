@@ -110,3 +110,36 @@ all:
 Для установки \texttt{cmake} была использована команда \texttt{sudo apt install cmake}.
 
 \screenshot{Screenshot_2025-06-20_at_00.42.27.png}{Установка \texttt{cmake} и зависимостей через \texttt{apt}}
+
+\subsubsection*{Структура файла \texttt{CMakeLists.txt}}
+
+Для каждого задания создаётся отдельный файл \texttt{CMakeLists.txt}, содержащий инструкции по сборке. Ниже приведён пример структуры этого файла для проекта, включающего исходный файл и библиотеку:
+
+\begin{lstlisting}[language=bash,caption={Пример структуры CMakeLists.txt}]
+cmake_minimum_required(VERSION 3.10)
+
+# Название проекта
+project(MaxLibrary C)
+
+# Добавление флагов компиляции (по желанию)
+set(CMAKE_C_STANDARD 99)
+
+# Указание исходных файлов
+add_library(maxlib STATIC max.c)
+# или для динамической библиотеки:
+# add_library(maxlib SHARED max.c)
+
+# Добавление исполняемого файла, использующего библиотеку
+add_executable(main main.c)
+
+# Линковка исполняемого файла с библиотекой
+target_link_libraries(main maxlib)
+\end{lstlisting}
+
+\begin{itemize}
+  \item \texttt{cmake\_minimum\_required}~--- указывает минимально необходимую версию CMake.
+  \item \texttt{project}~--- задаёт имя проекта и язык программирования.
+  \item \texttt{add\_library}~--- создаёт статическую или динамическую библиотеку из исходного файла.
+  \item \texttt{add\_executable}~--- создаёт исполняемый файл.
+  \item \texttt{target\_link\_libraries}~--- связывает исполняемый файл с библиотекой.
+\end{itemize}
