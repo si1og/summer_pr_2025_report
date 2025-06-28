@@ -65,7 +65,7 @@ usermod -aG sudo semenov
 С помощью команды \texttt{ldd} было также проанализировано количество зависимостей у основных утилит из п.~3 раздела <<Основы работы в командном интерпретаторе>>. Ниже приведено краткое резюме:
 
 \begin{itemize}
-    \item \texttt{whoami}, \texttt{date}, \texttt{cal}, \texttt{df}, \texttt{cat}, \texttt{touch}, \texttt{rm}, \texttt{whereis}~--- имеют минимальный набор зависимостей: как правило, это \texttt{libc.so.6}, загрузчик \texttt{ld-linux-aarch64.so.1}, а также виртуальная библиотека \texttt{linux-vdso.so.1}.
+    \item \texttt{whoami}, \texttt{date}, \texttt{cal}, \texttt{df}, \texttt{cat}, \texttt{touch}, \texttt{rm}, \texttt{whereis}~--- имеют минимальный набор зависимостей: как правило, это \texttt{libc.so.6}, загрузчик \break\texttt{ld-linux-aarch64.so.1}, а также виртуальная библиотека \break\texttt{linux-vdso.so.1}.
 
     \item \texttt{hexdump}, \texttt{less}~--- дополнительно используют библиотеку \texttt{libtinfo.so.6}, обеспечивающую взаимодействие с терминалом (цвет, прокрутка и т.д.).
 
@@ -84,7 +84,7 @@ usermod -aG sudo semenov
 
 Количество и состав библиотек может варьироваться в зависимости от сборки и архитектуры системы (в данном случае — \texttt{aarch64}), однако во всех случаях ядром зависимостей остаётся стандартная библиотека \texttt{libc.so.6} и динамический загрузчик \texttt{ld-linux-aarch64.so.1}.
 
-В качестве подтверждения приведены скриншоты с выводом команды \texttt{ldd} для соответствующих утилит:
+В качестве подтверждения приведены скриншоты \ref{fig:Screenshot_2025-06-26_at_16.47.02.png}, \ref{fig:Screenshot_2025-06-26_at_16.47.37.png}, \ref{fig:Screenshot_2025-06-26_at_16.48.18.png}, \ref{fig:Screenshot_2025-06-26_at_16.49.59.png} и \ref{fig:Screenshot_2025-06-26_at_16.51.37.png} с выводом команды \texttt{ldd} для соответствующих утилит:
 
 \screenshot{Screenshot_2025-06-26_at_16.47.02.png}{ldd для \texttt{hexdump}, \texttt{find}, \texttt{whereis}}
 
@@ -113,7 +113,7 @@ all:
 
 \subsubsection*{Структура файла \texttt{CMakeLists.txt}}
 
-Для каждого задания создаётся отдельный файл \texttt{CMakeLists.txt}, содержащий инструкции по сборке. Ниже приведён пример структуры этого файла для проекта, включающего исходный файл и библиотеку:
+Для каждого задания был создан отдельный файл \texttt{CMakeLists.txt}~--- далее это будет показато в отчёте, --- содержащий инструкции по сборке. Ниже приведён пример структуры этого файла для проекта, включающего исходный файл и библиотеку:
 
 \begin{lstlisting}[language=bash,caption={Пример структуры CMakeLists.txt}]
 cmake_minimum_required(VERSION 3.10)
