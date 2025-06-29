@@ -1,0 +1,456 @@
+\subsection{Задание 2. Двоичные файлы и визуализация структур в псевдографике}
+
+\subsubsection*{Описание структуры из индивидуального варианта}
+
+В рамках данного задания была составлена структура для хранения информации о человеке, включающая следующие поля:
+\begin{itemize}
+  \item \textbf{Фамилия и инициалы} --- строка фиксированной длины (до 64 символов),
+  \item \textbf{Знак зодиака} --- строка фиксированной длины (до 32 символов),
+  \item \textbf{Год рождения} --- целое число, представляющее год.
+\end{itemize}
+
+Редактирование исходного кода структуры производилось в текстовом редакторе \texttt{nano} на гостевой системе через SSH-сессию. На скриншоте представлен процесс создания файла \texttt{znak.h} и внесение в него описания структуры:
+
+\screenshot{Screenshot_2025-06-27_at_03.25.08.png}{Редактирование структуры ZNAK в файле \texttt{znak.h} с помощью nano}
+
+\noindentСтруктура была реализована следующим образом:
+\begin{lstlisting}[language=C, numbers=left, caption=Описание структуры ZNAK]
+#define NAME_LEN 64
+#define ZODIAC_LEN 32
+
+typedef struct {
+    char name[NAME_LEN];
+    char zodiac[ZODIAC_LEN];
+    int birth_year;
+} ZNAK;
+\end{lstlisting}
+
+\subsubsection*{Описание заголовка базы данных}
+
+Также была составлена структура заголовка бинарного файла базы данных. Она содержит следующие поля:
+\begin{itemize}
+  \item \textbf{Сигнатура формата файла} --- первые 4 байта файла, в которые записывается ``SEME'' (по первым буквам фамилии Semenov). Это позволяет в дальнейшем при чтении файла проверить, соответствует ли файл ожидаемому формату.
+  
+  \item \textbf{Номер транзакции} (\texttt{transaction\_id}) --- целое число (4 байта), которое увеличивается при каждом обращении к файлу, как при чтении, так и при записи. Это даёт возможность отследить количество операций с файлом и потенциальные изменения данных.
+  
+  \item \textbf{Количество записей} (\texttt{count}) --- целое число (4 байта), указывающее сколько структур ZNAK находится в данном файле после заголовка.
+  
+  \item \textbf{Контрольная сумма (CRC-32)} --- вычисляется по алгоритму CRC-32 для всех данных, следующих за заголовком. Она нужна для того, чтобы в любой момент можно было проверить целостность данных: если файл будет повреждён или модифицирован некорректно, пересчитанная контрольная сумма не совпадёт с записанной, и можно будет определить, что данные ненадёжны.
+\end{itemize}
+
+Редактирование исходного файла, содержащего как структуру данных о человеке, так и структуру заголовка базы данных, производилось в редакторе \texttt{nano}, что показано на скриншоте ниже:
+
+\screenshot{Screenshot_2025-06-27_at_03.32.39.png}{Редактирование структуры заголовка ZNAK\_DB\_HEADER и структуры ZNAK в nano}
+
+\noindentПример кода заголовка базы данных в \texttt{znak.h}:
+\begin{lstlisting}[language=C, numbers=left, caption=Структура заголовка бинарного файла]
+typedef struct {
+    char signature[4];
+    uint32_t transaction_id;
+    uint32_t count;
+    uint32_t checksum;
+} ZNAK_DB_HEADER;
+\end{lstlisting}
+
+Таким образом, заголовок обеспечивает:
+\begin{itemize}
+  \item идентификацию формата файла с помощью сигнатуры;
+  \item учёт количества операций чтения/записи через transaction\_id;
+  \item хранение информации о количестве записей в базе;
+  \item проверку целостности данных с помощью CRC-32.
+\end{itemize}
+
+\subsubsection*{Использование \texttt{uint32\_t} вместо \texttt{int}}
+
+Для описания полей заголовка базы данных (\texttt{transaction\_id}, \texttt{count}, \texttt{checksum}) был использован тип \texttt{uint32\_t} из заголовочного файла \texttt{<stdint.h>}, а не привычный \texttt{int}. Это сделано по следующим причинам:
+
+\begin{itemize}
+  \item \textbf{Гарантированный размер:} 
+  Тип \texttt{uint32\_t} представляет собой \textbf{беззнаковое целое ровно 4 байта (32 бита)} на всех платформах. В то время как \texttt{int} в языке C лишь гарантирует, что будет не менее 2 байт (обычно 4 байта, но это зависит от архитектуры и компилятора).
+
+  \item \textbf{Переносимость бинарного формата:}
+  Так как база данных сохраняется в бинарном формате, важно, чтобы структура файла выглядела одинаково на всех системах (например, x86, ARM). Использование \texttt{uint32\_t} позволяет гарантировать, что поля заголовка будут точно занимать 4 байта, а значит файл можно будет прочитать на любой платформе.
+
+  \item \textbf{Отсутствие знака для идентификаторов и счётчиков:}
+  Поля \texttt{transaction\_id}, \texttt{count} и \texttt{checksum} не могут быть отрицательными по своей природе. Использование беззнакового типа \texttt{uint32\_t} явно показывает, что эти значения не должны быть отрицательными, и исключает возможность их интерпретации как отрицательных чисел.
+\end{itemize}
+
+\subsubsection*{Реализация программы с использованием ncurses для работы с бинарной базой данных}
+
+В рамках данного задания была составлена программа на языке \texttt{C}, использующая библиотеку \texttt{ncurses} для визуализации работы с двоичным файлом базы данных. Программа включает:
+
+\begin{itemize}
+    \item интерфейс для ввода и отображения записей;
+    \item хранение данных в бинарном файле со специальным заголовком;
+    \item выполнение индивидуального задания --- поиск по знаку зодиака и году рождения;
+    \item возможность добавления записей с обновлением заголовка.
+\end{itemize}
+
+\vspace{0.5cm}
+
+\subsubsection*{Исходные файлы программы}
+
+Программа разбита на несколько модулей:
+
+\begin{itemize}
+    \item \texttt{znak.h} --- описание структур данных;
+    \item \texttt{app.h} --- объявления функций работы с интерфейсом и файлами;
+    \item \texttt{app.c} --- реализация функций интерфейса, работы с файлом и структуры базы;
+    \item \texttt{main.c} --- точка входа и главное меню.
+\end{itemize}
+
+\subsubsection*{Файл \texttt{znak.h}}
+
+\noindent
+Файл \texttt{znak.h}, который был подробно рассмотрен ранее, приведён ниже для удобства. 
+
+\begin{lstlisting}[language=C, numbers=left, caption=znak.h]
+#define NAME_LEN 64
+#define ZODIAC_LEN 32
+
+#include <stdint.h>
+#include <zlib.h>
+
+typedef struct {
+    char name[NAME_LEN];
+    char zodiac[ZODIAC_LEN];
+    int birth_year;
+} ZNAK;
+
+typedef struct {
+    char signature[4];
+    uint32_t transaction_id;
+    uint32_t count;
+    uint32_t checksum;
+} ZNAK_DB_HEADER;
+\end{lstlisting}
+
+\subsubsection*{Файл \texttt{app.h}}
+
+Заголовочный файл с объявлениями всех функций и необходимых констант:
+
+\begin{lstlisting}[language=C, numbers=left, caption=app.h]
+#include "znak.h"
+
+#define DB_FILENAME "znak_db"
+#define MAX_RECORDS 100
+
+void input_znak(ZNAK *z);
+void save_db(ZNAK_DB_HEADER *header, ZNAK *arr, int count);
+void find_by_year_and_zodiac(ZNAK_DB_HEADER *header, ZNAK *arr, int count, const char *zodiac, int year);
+void add_record(ZNAK_DB_HEADER *header, ZNAK *arr, int *count);
+void search_records(ZNAK_DB_HEADER *header, ZNAK *arr, int count);
+void print_db_header(ZNAK_DB_HEADER *header);
+void db_print_interface(ZNAK_DB_HEADER *header, ZNAK *arr, int count);
+void print_db(ZNAK_DB_HEADER *header, ZNAK arr, int count);
+void error_msg(const char msg);
+void clear_except_first_line();
+\end{lstlisting}
+
+\noindent
+В этом заголовочном файле задекларированы все функции программы, необходимые для работы с ncurses и двоичным файлом базы данных. Приведём краткое описание каждой функции:
+\begin{itemize}
+  \item \texttt{save\_db(ZNAK\_DB\_HEADER *header, ZNAK *arr, int count)} — сохраняет в бинарный файл заголовок и массив структур \texttt{ZNAK}, обновляя контрольную сумму и увеличивая ID транзакции при каждом сохранении.
+  
+  \item \texttt{find\_by\_year\_and\_zodiac(...)} — осуществляет поиск по базе данных по заданным году рождения и знаку зодиака. Отображает найденные результаты в виде таблицы на экране.
+  
+  \item \texttt{add\_record(...)} — добавляет новую запись в массив, корректирует заголовок (увеличивает количество записей и номер транзакции), после чего сразу сохраняет базу на диск.
+  
+  \item \texttt{search\_records(...)} — интерфейс поиска: запрашивает у пользователя необходимые параметры (год и знак зодака), после чего вызывает функцию \texttt{find\_by\_year\_and\_zodiac} для выполнения поиска.
+  
+  \item \texttt{print\_db\_header(...)} — выводит информацию о заголовке базы данных: сигнатуру, ID транзакции, число записей и CRC-32 контрольную сумму.
+  
+  \item \texttt{db\_print\_interface(...)} — основной интерфейс для просмотра всех записей в базе с постраничным выводом и управлением навигацией через клавиши \texttt{n}, \texttt{p}, \texttt{q}.
+  
+  \item \texttt{print\_db(...)} — вспомогательная функция, используемая для табличного вывода всех записей без информации о заголовке.
+  
+  \item \texttt{error\_msg(const char *msg)} — показывает сообщение об ошибке в ncurses-окне и ждёт нажатия клавиши для продолжения работы.
+  
+  \item \texttt{clear\_except\_first\_line()} — очищает весь экран кроме первой строки, что позволяет аккуратно обновлять интерфейс, сохраняя статусную строку.
+\end{itemize}
+
+\subsubsection*{Файл \texttt{app.c}}
+
+Ниже представлена реализация всех функций, обеспечивающих работу программы с использованием библиотеки \texttt{ncurses} и двоичного файла базы данных. Здесь сосредоточена вся прикладная логика, включая интерфейс ввода/вывода, работу с заголовком, чтение и запись файла, обработку ошибок и механизм постраничного отображения.
+
+\subsubsection*{Функция ввода записи}
+
+Функция \texttt{input\_znak} обеспечивает пошаговый ввод пользователем данных для полей структуры \texttt{ZNAK}: фамилии и инициалов, знака зодиака и года рождения, с использованием интерфейса \texttt{ncurses}. Для строковых полей предусмотрены проверки на пустой ввод, а для года рождения — проверка диапазона от 1899 до 2025. Все данные сразу записываются в соответствующие поля структуры.
+
+\begin{lstlisting}[language=C, caption=Функция input\_znak]
+void input_znak(ZNAK *z) {
+  echo();
+  while (1) {
+    mvprintw(2, 2, "Фамилия и инициалы: ");
+    getnstr(z->name, sizeof(z->name) - 1);
+    if (strlen(z->name) > 0) break;
+    error_msg("Фамилия и инициалы не могут быть пустыми.");
+  }
+
+  while (1) {
+    mvprintw(3, 2, "Знак зодиака: ");
+    getnstr(z->zodiac, sizeof(z->zodiac) - 1);
+    if (strlen(z->zodiac) > 0) break;
+    error_msg("Знак зодиака не может быть пустым.");
+  }
+
+  while (1) {
+    int birth_year = 0;
+    mvprintw(4, 2, "Год рождения: ");
+    scanw("%d", &birth_year);
+    if (birth_year >= 1899 && birth_year <= 2025) {
+      z->birth_year = birth_year;
+      break;
+    } else {
+      error_msg("Год рождения должен быть в диапазоне 1899-2025.");
+    }
+  }
+  noecho();
+}
+\end{lstlisting}
+
+\subsubsection*{Сохранение базы в файл}
+
+Функция \texttt{save\_db} предназначена для сохранения текущего состояния базы данных в бинарный файл. Сначала открывается файл для записи в бинарном режиме, при этом при ошибке открытия выводится сообщение с помощью \texttt{perror}. Затем обновляется поле \texttt{count} заголовка, инкрементируется \texttt{transaction\_id}, и вычисляется контрольная сумма CRC32 по всем данным массива структур для последующей проверки целостности. После этого в файл последовательно записываются заголовок и массив структур. В завершение файл закрывается.
+
+\begin{lstlisting}[language=C, caption=Функция save\_db]
+void save_db(ZNAK_DB_HEADER *header, ZNAK *arr, int count) {
+  FILE* file = fopen(DB_FILENAME, "wb");
+  if (!file) {
+    perror("Ошибка создания файла");
+    return;
+  }
+
+  header->count = count;
+  header->transaction_id++;
+  header->checksum = crc32(0L, Z_NULL, 0);
+  header->checksum = crc32(header->checksum, 
+  (const Bytef*)arr, sizeof(ZNAK) * count);
+
+  fwrite(header, sizeof(ZNAK_DB_HEADER), 1, file);
+  fwrite(arr, sizeof(ZNAK), count, file);
+  fclose(file);
+}
+\end{lstlisting}
+
+\subsubsection*{Вывод заголовка базы данных}
+Данная функция отвечает за отображение основной служебной информации о бинарной базе данных на экран. Она выводит сигнатуру, номер транзакции, количество записей в базе и контрольную сумму CRC32, обеспечивающую целостность данных. После вывода всех полей заголовка пользователю предлагается нажать любую клавишу для продолжения.
+
+\begin{lstlisting}[language=C, caption=Функция print\_db\_header]
+void print_db_header(ZNAK_DB_HEADER *header) {
+  clear();
+  mvprintw(1, 2, "Заголовок базы данных:");
+  mvprintw(2, 4, "Сигнатура: %.4s", header->signature);
+  mvprintw(3, 4, "Номер транзакции: %u", header->transaction_id);
+  mvprintw(4, 4, "Количество записей: %u", header->count);
+  mvprintw(5, 4, "Контрольная сумма (CRC32): %u", header->checksum);
+
+  mvprintw(20, 2, "Нажмите любую клавишу для выхода...");
+  getch();
+}
+\end{lstlisting}
+
+\paragraph*{Интерфейс просмотра базы данных с постраничным выводом}
+Функция \texttt{db\_print\_interface} организует интерфейс просмотра содержимого базы данных в виде таблицы с постраничной навигацией. С помощью возможностей библиотеки \texttt{ncurses} она отрисовывает заголовки столбцов («№», «Фамилия и инициалы», «Знак зодиака», «Год») и строки таблицы, где каждая строка соответствует одной записи структуры \texttt{ZNAK}. Вывод делится на страницы, количество записей на странице зависит от размеров текущего окна терминала. Пользователь может листать данные с помощью клавиш \texttt{n} (следующая страница) и \texttt{p} (предыдущая страница), либо выйти, нажав \texttt{q}.
+
+\begin{lstlisting}[language=C, caption=Функция db\_print\_interface]
+void db_print_interface(ZNAK_DB_HEADER *header, ZNAK *arr, int count) {
+  int rows, cols;
+  getmaxyx(stdscr, rows, cols);
+  
+  int lines_per_page = rows - 10;
+  int start = 0;
+  
+  while (start < count) {
+    clear_except_first_line();
+    mvprintw(2, 4, "%-7s %-41s %-26s %-5s", "№", "Фамилия и инициалы", "Знак зодиака", "Год");
+    mvhline(3, 4, '-', cols - 8);
+
+    int i, row = 4;
+    for (i = start; i < count && i < start + lines_per_page; ++i) {
+        mvprintw(row++, 4, "%-5d %-25s %-15s %-5d",
+                  i + 1, arr[i].name, arr[i].zodiac, arr[i].birth_year);
+    }
+
+    mvprintw(rows - 2, 2,
+        "Страница %d/%d. Нажмите 'n' для следующей, 'p' для предыдущей, 'q' для выхода.",
+        (start / lines_per_page) + 1,
+        (count + lines_per_page - 1) / lines_per_page);
+
+    int ch = getch();
+    if (ch == 'q' || ch == 'Q')
+        break;
+    else if (ch == 'n' || ch == 'N')
+        start += lines_per_page;
+    else if (ch == 'p' || ch == 'P') {
+        if (start - lines_per_page >= 0)
+            start -= lines_per_page;
+    } else
+        break;
+  }
+}
+\end{lstlisting}
+
+
+
+\subsubsection*{Просмотр базы с постраничной прокруткой}
+\begin{lstlisting}[language=C, caption=Функция print\_db]
+void print_db(ZNAK_DB_HEADER *header, ZNAK *arr, int count) {
+    int rows, cols;
+    getmaxyx(stdscr, rows, cols);
+    int lines_per_page = rows - 10;
+    int start = 0;
+
+    while (start < count) {
+        clear();
+        print_db_header(header);
+        mvprintw(7, 2, "Записи:");
+        mvprintw(8, 4, "%-5s %-25s %-15s %-5s", "№", "Фамилия", "Знак", "Год");
+        mvhline(9, 4, '-', cols - 8);
+
+        int i, row = 10;
+        for (i = start; i < count && i < start + lines_per_page; ++i) {
+            mvprintw(row++, 4, "%-5d %-25s %-15s %-5d",
+                     i + 1, arr[i].name, arr[i].zodiac, arr[i].birth_year);
+        }
+
+        mvprintw(rows - 2, 2, 
+            "Страница %d/%d. 'n' - далее, 'p' - назад, 'q' - выход.",
+            (start / lines_per_page) + 1,
+            (count + lines_per_page - 1) / lines_per_page);
+
+        int ch = getch();
+        if (ch == 'q') break;
+        else if (ch == 'n') start += lines_per_page;
+        else if (ch == 'p' && start - lines_per_page >= 0) start -= lines_per_page;
+        else break;
+    }
+}
+\end{lstlisting}
+
+\subsubsection*{Поиск по знаку и году}
+\begin{lstlisting}[language=C, caption=Функция search\_records]
+void search_records(ZNAK_DB_HEADER *header, ZNAK *arr, int count) {
+    char zodiac[ZODIAC_LEN];
+    int year;
+
+    clear();
+    mvprintw(1, 2, "Введите знак зодиака: ");
+    echo();
+    getnstr(zodiac, sizeof(zodiac) - 1);
+    noecho();
+
+    mvprintw(2, 2, "Введите год рождения: ");
+    echo();
+    scanw("%d", &year);
+    noecho();
+
+    clear();
+    mvprintw(3, 2, "Результаты поиска по '%s' и %d:", zodiac, year);
+    mvprintw(5, 4, "%-5s %-25s %-15s %-5s", "№", "Фамилия", "Знак", "Год");
+
+    int found = 0;
+    for (int i = 0, row = 6; i < count; ++i) {
+        if (strcmp(arr[i].zodiac, zodiac) == 0 && arr[i].birth_year == year) {
+            mvprintw(row++, 4, "%-5d %-25s %-15s %-5d",
+                     i + 1, arr[i].name, arr[i].zodiac, arr[i].birth_year);
+            found = 1;
+        }
+    }
+
+    if (!found) mvprintw(7, 4, "Совпадений не найдено.");
+
+    mvprintw(20, 2, "Нажмите любую клавишу для выхода...");
+    getch();
+}
+\end{lstlisting}
+
+\subsubsection*{Добавление записи}
+\begin{lstlisting}[language=C, caption=Функция add\_record]
+void add_record(ZNAK_DB_HEADER *header, ZNAK *arr, int *count) {
+    clear();
+    mvprintw(1, 2, "Добавление записи:");
+    input_znak(&arr[(*count)++]);
+    save_db(header, arr, *count);
+}
+\end{lstlisting}
+
+\subsubsection*{Вывод ошибок}
+\begin{lstlisting}[language=C, caption=Функция error\_msg]
+void error_msg(const char *msg) {
+    int rows;
+    getmaxyx(stdscr, rows, NULL);
+    mvprintw(rows - 2, 2, "%s Нажмите любую клавишу...", msg);
+    getch();
+    for (int i = 2; i < rows - 1; ++i)
+        move(i, 0), clrtoeol();
+}
+\end{lstlisting}
+
+\subsubsection*{Файл \texttt{main.c}}
+
+Точка входа и меню программы.
+
+\begin{lstlisting}[language=C, numbers=left, caption=main.c]
+#include <ncurses.h>
+#include <locale.h>
+#include "app.h"
+
+int main() {
+    setlocale(LC_ALL, "ru_RU.UTF-8");
+    initscr();
+    cbreak();
+    noecho();
+
+    ZNAK records[MAX_RECORDS];
+    ZNAK_DB_HEADER header;
+    int count = 0;
+
+    FILE *file = fopen(DB_FILENAME, "rb");
+    if (!file) {
+        memcpy(header.signature, "SEME", 4);
+        header.transaction_id = 0;
+        header.count = 0;
+        header.checksum = 0;
+
+        mvprintw(1, 2, "Файл не найден. Введите количество записей: ");
+        echo(); scanw("%d", &count); noecho();
+
+        for (int i = 0; i < count; ++i) {
+            clear();
+            mvprintw(1, 2, "Запись %d:", i+1);
+            input_znak(&records[i]);
+        }
+        save_db(&header, records, count);
+    } else {
+        fread(&header, sizeof(ZNAK_DB_HEADER), 1, file);
+        fread(records, sizeof(ZNAK), header.count, file);
+        count = header.count;
+        fclose(file);
+    }
+
+    while (1) {
+        clear();
+        mvprintw(2, 2, "1. Просмотр заголовка и записей");
+        mvprintw(3, 2, "2. Поиск по знаку и году");
+        mvprintw(4, 2, "3. Добавить запись");
+        mvprintw(5, 2, "4. Выход");
+        mvprintw(7, 2, "Ваш выбор: ");
+        echo();
+        int choice; scanw("%d", &choice); noecho();
+
+        if (choice == 1) { print_db(&header, records, count); }
+        else if (choice == 2) { search_records(&header, records, count); }
+        else if (choice == 3) { add_record(&header, records, &count); }
+        else if (choice == 4) break;
+    }
+    endwin();
+    return 0;
+}
+\end{lstlisting}
+
+\subsubsection*{Итог}
+
+Таким образом, была реализована программа для работы с бинарной базой структур в термине с ncurses, поддерживающая ввод, просмотр, поиск, добавление записей и контроль заголовка с использованием контрольной суммы CRC32. 
+
+\screenshot{Screenshot_2025-06-27_at_03.32.39.png}{Редактирование исходников программы в редакторе \texttt{nano}}
