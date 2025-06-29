@@ -9,7 +9,7 @@
 \begin{itemize}
   \item \textbf{Итеративный алгоритм} (рис.~\ref{fig:iterative}): сначала проверяется, является ли размер массива неположительным. В этом случае возвращается значение по умолчанию (0). Затем инициализируется переменная \texttt{max} первым элементом массива. После этого выполняется цикл по индексам от 1 до \texttt{size-1}, в котором каждый элемент сравнивается с текущим максимумом, и в случае превышения \texttt{max} обновляется.
   
-  \item \textbf{Рекурсивный алгоритм} (рис.~\ref{fig:recursive}): базовый случай — массив из одного элемента, в этом случае возвращается он. В противном случае производится рекурсивный вызов на префикс массива длины \texttt{size-1}, затем возвращается максимум между этим результатом и последним элементом массива.
+  \item \textbf{Рекурсивный алгоритм} (рис.~\ref{fig:recursive}): сначала проверяется, является ли размер массива неположительным. В этом случае возвращается значение по умолчанию (0). Затем, базовый случай — массив из одного элемента, в этом случае возвращается он. В противном случае производится рекурсивный вызов на префикс массива длины \texttt{size-1}, затем возвращается максимум между этим результатом и последним элементом массива.
 \end{itemize}
 \begin{figure}[H]
 \centering
@@ -23,8 +23,7 @@
   \node (loop_text) at (loop.center) {цикл: i = 1 до size-1};
   \node (cond) [draw, diamond, below of=loop, aspect=2] {arr[i] > max};
   \node (assign) [draw, rectangle, right of=cond, xshift=2.5cm] {max := arr[i]};
-  \node (nexti) [draw, below of=cond, circle] {};
-  \node (ret) [draw, rectangle, below of=nexti] {вернуть max};
+  \node (ret) [draw, rectangle, below of=cond, yshift=-1cm] {вернуть max};
   \node (stop) [draw, circle, below of=ret] {Конец};
   
   \draw[->] (start) -- (check);
@@ -33,11 +32,10 @@
   \draw[->] (ret0) |- (stop);
   \draw[->] (initmax) -- (loop);
   \draw[->] (loop) -- (cond);
-  \draw[->] (loop.east) -- ++(4,0) -- ++(0,-5) -- ++(-6.5, 0) -- (ret.north);
-  \draw[->] (nexti.west) -- ++(-3.5,0) -- ++(0,4) -- (loop.west);
+  \draw[->] (loop.east) -- ++(4,0) |- (ret.east);
   \draw[->] (cond) -- node[sloped, pos=.5, above left] {да} (assign);
-  \draw[->] (assign) |- (nexti);
-  \draw[->] (cond) -- node[left] {нет} (nexti);
+  % \draw[->] (assign) -- ++(0, -1) |- (loop.west);
+  % \draw[->] (cond) -- node[left] {нет} ++(0, 1) -- (0, 0) |- (loop.west);
   \draw[->] (ret) -- (stop);
   
   \end{tikzpicture}
@@ -52,7 +50,13 @@
   \begin{tikzpicture}[node distance=2cm, every node/.style={font=\small}, >=stealth]
   
   \node (start) [draw, circle] {Начало};
-  \node (check) [draw, diamond, below of=start, aspect=2] {size = 1};
+
+  \node (input_msg) [right of=start, yshift=-1.5cm] {Выход: };
+  \node (return_msg) [below of=input_msg, yshift=1.4cm] {Вывод: };
+
+  \node (check_is_below_0) [draw, diamond, below of=start, aspect=2, yshift=-2cm, yshift=-2cm] {size <= 0};
+  \node (ret0) [draw, rectangle, right of=check_is_below_0, xshift=5.5cm] {вернуть 0};
+  \node (check) [draw, diamond, below of=check_is_below_0, aspect=2] {size = 1};
   \node (ret1) [draw, rectangle, right of=check, xshift=5.5cm] {вернуть arr[1]};
   \node (recurse) [draw, rectangle, below of=check] {m := maxRecursive(arr, size-1)};
   \node (cond) [draw, diamond, below of=recurse, aspect=2] {arr[size-1] > m};
@@ -60,9 +64,14 @@
   \node (retm) [draw, rectangle, below of=cond] {вернуть m};
   \node (stop) [draw, circle, below of=retm] {Конец};
   
-  \draw[->] (start) -- (check);
+  \draw[->] (start) -- (check_is_below_0);
+  \draw[->] (start) -- ++(0, -2) -- ++(1.1,0) -- ++(0,1) -- ++(0.2,0);
+  \draw[->] (start) -- ++(0, -2) -- ++(1.1,0) -- ++(0,-1) -- ++(0.2,0);
+  \draw[->] (check_is_below_0) -- node[sloped, pos=0.2, above left] {да} (ret0);
+  \draw[->] (check_is_below_0) -- node[left] {нет} (check);
   \draw[->] (check) -- node[sloped, pos=0.2, above left] {да} (ret1);
   \draw[->] (check) -- node[left] {нет} (recurse);
+  \draw[->] (ret0.east) -- ++(1, 0) |- (stop);
   \draw[->] (ret1) |- (stop);
   \draw[->] (recurse) -- (cond);
   \draw[->] (cond) -- node[above] {да} (retarr);
