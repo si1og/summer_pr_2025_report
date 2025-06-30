@@ -13,29 +13,38 @@
 \end{itemize}
 \begin{figure}[H]
 \centering
-\scalebox{0.8} {
+\scalebox{1} {
   \begin{tikzpicture}[node distance=2cm, every node/.style={font=\small}, >=stealth]
   \node (start) [draw, circle] {Начало};
-  \node (check) [draw, diamond, below of=start, aspect=2] {size $\leq$ 0};
+
+  \node (input_msg) [right of=start, align=left, yshift=-1.65cm, xshift=3.05cm] {Вход: массив arr, кол-во элкментов size};
+  \node (return_msg) [below of=input_msg, align=left, yshift=1.4cm, xshift=.2cm] {Вывод: максимальный элемент в массиве};
+
+  \node (check) [draw, diamond, below of=start, aspect=2, yshift=-2cm] {size $\leq$ 0};
   \node (ret0) [draw, rectangle, right of=check, xshift=5.5cm] {вернуть 0};
   \node (initmax) [draw, rectangle, below of=check] {max := arr[0]};
   \node (loop) [draw, regular polygon, regular polygon sides=6,  minimum size=5cm, inner sep=0pt, below of=initmax, yscale=.3] {};
-  \node (loop_text) at (loop.center) {цикл: i = 1 до size-1};
+  \node (loop_text) at (loop.center) {цикл: i = 1 до size};
   \node (cond) [draw, diamond, below of=loop, aspect=2] {arr[i] > max};
   \node (assign) [draw, rectangle, right of=cond, xshift=2.5cm] {max := arr[i]};
   \node (ret) [draw, rectangle, below of=cond, yshift=-1cm] {вернуть max};
-  \node (stop) [draw, circle, below of=ret] {Конец};
+  \node (stop) [draw, circle, below of=ret, yshift=-1cm] {Конец};
   
   \draw[->] (start) -- (check);
+
+  \draw (start) ++(0, -2)  ++(1.1,0) -- ++(0,0.8) -- ++(0.2,0);
+  \draw (start) ++(0, -2)  ++(1.1,0) -- ++(0,-0.8) -- ++(0.2,0);
+  \draw[dashed] (start) ++(0, -2) -- ++(1.1,0);
+
   \draw[->] (check) -- node[sloped, pos=0.2, above left] {да} (ret0);
   \draw[->] (check) -- node[left] {нет} (initmax);
-  \draw[->] (ret0) |- (stop);
+  \draw (ret0) -- ++(0, -10.25) -- ++(-7.5, 0);
   \draw[->] (initmax) -- (loop);
   \draw[->] (loop) -- (cond);
   \draw[->] (loop.east) -- ++(4,0) |- (ret.east);
   \draw[->] (cond) -- node[sloped, pos=.5, above left] {да} (assign);
-  % \draw[->] (assign) -- ++(0, -1) |- (loop.west);
-  % \draw[->] (cond) -- node[left] {нет} ++(0, 1) -- (0, 0) |- (loop.west);
+  \draw[->] (assign) -- ++(0, -2) -- ++(-8, 0) |- (loop.west);
+  \draw (cond) -- node[left] {нет} ++(0, -2);
   \draw[->] (ret) -- (stop);
   
   \end{tikzpicture}
@@ -46,15 +55,17 @@
 
 \begin{figure}[H]
 \centering
-\scalebox{0.8}{
+\scalebox{1}{
   \begin{tikzpicture}[node distance=2cm, every node/.style={font=\small}, >=stealth]
   
   \node (start) [draw, circle] {Начало};
 
-  \node (input_msg) [right of=start, yshift=-1.5cm] {Выход: };
-  \node (return_msg) [below of=input_msg, yshift=1.4cm] {Вывод: };
+  \node (input_msg) [right of=start, align=left, yshift=-1.65cm, xshift=3.05cm] {Вход: массив arr, кол-во элкментов size};
+  \node (return_msg) [below of=input_msg, align=left, yshift=1.4cm, xshift=.2cm] {Вывод: максимальный элемент в массиве};
+  \node (comment) [below of=return_msg, align=left, yshift=1.4cm, xshift=-.5cm] {Алгоритм --- функция maxRecursive};
+  
 
-  \node (check_is_below_0) [draw, diamond, below of=start, aspect=2, yshift=-2cm, yshift=-2cm] {size <= 0};
+  \node (check_is_below_0) [draw, diamond, below of=start, aspect=2, yshift=-0.5cm, yshift=-2cm] {size <= 0};
   \node (ret0) [draw, rectangle, right of=check_is_below_0, xshift=5.5cm] {вернуть 0};
   \node (check) [draw, diamond, below of=check_is_below_0, aspect=2] {size = 1};
   \node (ret1) [draw, rectangle, right of=check, xshift=5.5cm] {вернуть arr[1]};
@@ -62,20 +73,21 @@
   \node (cond) [draw, diamond, below of=recurse, aspect=2] {arr[size-1] > m};
   \node (retarr) [draw, rectangle, right of=cond, xshift=3cm] {вернуть arr[size-1]};
   \node (retm) [draw, rectangle, below of=cond] {вернуть m};
-  \node (stop) [draw, circle, below of=retm] {Конец};
+  \node (stop) [draw, circle, below of=retm, yshift=-1cm] {Конец};
   
   \draw[->] (start) -- (check_is_below_0);
-  \draw[->] (start) -- ++(0, -2) -- ++(1.1,0) -- ++(0,1) -- ++(0.2,0);
-  \draw[->] (start) -- ++(0, -2) -- ++(1.1,0) -- ++(0,-1) -- ++(0.2,0);
+  \draw (start) ++(0, -2.2)  ++(1.1,0) -- ++(0,1) -- ++(0.2,0);
+  \draw (start) ++(0, -2.2)  ++(1.1,0) -- ++(0,-1) -- ++(0.2,0);
+  \draw[dashed] (start) ++(0, -2.2) -- ++(1.1,0);
   \draw[->] (check_is_below_0) -- node[sloped, pos=0.2, above left] {да} (ret0);
   \draw[->] (check_is_below_0) -- node[left] {нет} (check);
   \draw[->] (check) -- node[sloped, pos=0.2, above left] {да} (ret1);
   \draw[->] (check) -- node[left] {нет} (recurse);
-  \draw[->] (ret0.east) -- ++(1, 0) |- (stop);
-  \draw[->] (ret1) |- (stop);
+  \draw (ret0.east) -- ++(1, 0) |- ++(0,-9.2) -- ++(-9.6, 0);
+  \draw (ret1) -- ++(0, -7.2);
   \draw[->] (recurse) -- (cond);
   \draw[->] (cond) -- node[above] {да} (retarr);
-  \draw[->] (retarr) |- (stop);
+  \draw (retarr) -- ++(0, -3.2);
   \draw[->] (cond) -- node[left] {нет} (retm);
   \draw[->] (retm) -- (stop);
   
