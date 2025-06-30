@@ -1,49 +1,13 @@
-\section*{Приложение A. Заголовочный файл класса MyPlayer }
-\addcontentsline{toc}{section}{Приложение A. Заголовочный файл класса MyPlayer}
+\section*{Приложение A. Задание 1. Заголовочный файл библиотеки поиска максимально элемента}
+\addcontentsline{toc}{section}{Приложение A. Задание 1. Заголовочный файл библиотеки поиска максимально элемента}
 
-\begin{lstlisting}[language=C++,caption={Заголовочный файл класса MyPlayer},label={lst:move_array},numbers=left]
-#pragma once
-#include "../core/game.hpp"
-#include "../core/state.hpp"
+\begin{lstlisting}[language=C,numbers=left]
+int max_iterative(const int *arr, int size);
+int max_recursive(const int *arr, int size);
 
-namespace ttt::my_player {
+double max_iterative_double(const double *arr, int size);
+double max_recursive_double(const double *arr, int size);
 
-using game::IPlayer;
-using game::Point;
-using game::Sign;
-using game::State;
-
-class MyPlayer : public IPlayer {
-public:
-    MyPlayer(const char *name);
-    ~MyPlayer();
-
-    void set_sign(Sign sign) override;
-    Point make_move(const State &state) override;
-    const char *get_name() const override;
-
-private:
-    char m_name[32];
-    Sign m_sign;
-
-    // Динамический массив ходов
-    struct MoveArray {
-        Point* data;
-        int capacity;
-        int size;
-        MoveArray(int max_size);
-        ~MoveArray();
-        void clear();
-        void push_back(const Point& p);
-    };
-
-    bool is_within_bounds(int x, int y, const State &state) const;
-    bool has_neighbor(const State &state, int x, int y) const;
-    void generate_moves(const State &state, MoveArray &moves) const;
-    int evaluate(const State &state, Sign maximizer) const;
-    int minimax(State &state, int depth, int alpha, int beta, bool maximizing,
-                Sign player, Point &best_move, long long deadline) const;
-};
-
-} // namespace ttt::my_player
+char max_iterative_char(const char *arr, int size);
+char max_recursive_char(const char *arr, int size);
 \end{lstlisting}
