@@ -2,6 +2,7 @@
 \addcontentsline{toc}{section}{Приложение Ё. Задание 2. Реализация главной управляющей функции программы}
 
 \begin{lstlisting}[language=C,numbers=left]
+#include <string.h>
 #include <ncurses.h>
 #include <locale.h>
 #include "app.h"
@@ -67,19 +68,7 @@ int main() {
     if (choice == 1) {
       print_db_header(&header);
     } else if (choice == 2) {
-      clear();
-      FILE *file = fopen(DB_FILENAME, "rb");
-      if (file) {
-        ZNAK_DB_HEADER header;
-        fread(&header, sizeof(ZNAK_DB_HEADER), 1, file);
-        fread(records, sizeof(ZNAK), header.count, file);
-        count = header.count;
-        fclose(file);
-
-        print_db(&header, records, count);
-      } else {
-        mvprintw(2, 2, "Файл базы данных не найден.");
-      }
+      print_db(&header, records, count);
     } else if (choice == 3) {
       search_records(&header, records, count);
     } else if (choice == 4) {
